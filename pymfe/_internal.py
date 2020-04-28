@@ -151,6 +151,11 @@ VALID_TRANSFORM_CAT = (
     "one-hot",
 )
 
+VALID_TRANSFORM_NUM = (
+    "equal-freq",
+    "optim",
+)
+
 _RESCALE_SCALERS = {
     "standard": sklearn.preprocessing.StandardScaler,
     "min-max": sklearn.preprocessing.MinMaxScaler,
@@ -1470,8 +1475,9 @@ def _equal_freq_discretization(data: np.ndarray,
     return np.digitize(x=data, bins=hist_divs, right=True)
 
 
-def transform_num(data_numeric: np.ndarray,
-                  num_bins: t.Optional[int] = None) -> t.Optional[np.ndarray]:
+def transform_num_equalfreq(
+        data_numeric: np.ndarray,
+        num_bins: t.Optional[int] = None) -> t.Optional[np.ndarray]:
     """Discretize numeric data with an equal-frequency histogram.
 
     The index of the histogram bin overwrites its correspondent numeric
@@ -1518,6 +1524,33 @@ def transform_num(data_numeric: np.ndarray,
         num_bins=num_bins)
 
     return digitalized_data
+
+
+def transform_num_optim(data_numeric: np.ndarray) -> t.Optional[np.ndarray]:
+    """Transform numerical data using ``optim`` strategy.
+
+    This strategy algorithm works as follows:
+
+    For each numerical attribute:
+        1. Sort the attribute values
+        2. Calculate the first-order differences D between neighbors
+           of the sorted values.
+        3. Each bin width is W = median(D).
+        4. Discretize the attribute using `k` bins of `W` width.
+
+    Args:
+        data_numeric (:obj:`np.ndarray`): 2-D numpy array of numeric-
+            only data to discretize.
+
+    Returns:
+        np.ndarray: discretized version of ``data_numeric``.
+    """
+    incs = np.median(np.diff(np.sort(data_numerid, axis=0), axis=0), axis=0)
+
+    for ind_attr, attr in enumerate(data_numeric.T):
+        ...o
+
+    return ...
 
 
 def rescale_data(data: np.ndarray,

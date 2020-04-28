@@ -688,22 +688,26 @@ class MFE:
 
         return total_time.tolist()
 
-    def _set_data_categoric(self, transform_num: bool,
+    def _set_data_categoric(self, transform_num: t.Optional[str],
                             num_bins: bool = None) -> np.ndarray:
         """Returns categorical data from the fitted dataset.
 
         Parameters
         ----------
-        transform_num : :obj:`bool`
-            If True, then all numeric-type data are discretized using an
-            equal-frequency histogram. Otherwise, this method ignores these
-            attributes.
+        transform_num : :obj:`str`
+            If `equal-freq`, then all numeric-type data are discretized using
+            an equal-frequency histogram.
+            If `optim`, the numeric data is ddiscretized using a histogram with
+            variable number of bins and length, based on the first order
+            differences of the sorted values of each attribute.
+            If None, this method ignores these attributes.
 
         num_bins : :obj:`bool`, optional
             Number of bins of the discretization histogram. This argument is
-            used only if ``transform_num`` is True. If this argument value is
-            :obj:`NoneType`, then it is set to min(2, c), where ``c`` is the
-            cubic root of the number of instances of the fitted dataset.
+            used only if ``transform_num`` is `equal-freq`. If this argument
+            value is :obj:`NoneType`, then it is set to min(2, c), where
+            ``c`` is the cubic root of the number of instances of the fitted
+            dataset.
 
         Returns
         -------
@@ -732,11 +736,22 @@ class MFE:
                             "attributes. Please be sure to call method "
                             '"_fill_col_ind_by_type" before this method.')
 
+        if (transform_num is not None and
+                transform_num not in _internal.VALID_TRANSFORM_NUM):
+            raise ValueError("Invalid 'transform_num' value ('{}'). Must be "
+                             "a value in {}.".format(
+                                 transform_num, _internal.VALID_TRANSFORM_NUM))
+
         data_cat = self.X[:, self._attr_indexes_cat]
 
         if transform_num:
-            data_num_discretized = _internal.transform_num(
-                self.X[:, self._attr_indexes_num], num_bins=num_bins)
+            if transform_num == "equal-freq":
+                data_num_discretized = _internal.transform_num_equalfreq(
+                    self.X[:, self._attr_indexes_num], num_bins=num_bins)
+
+            elif:
+                data_num_discretized = _internal.transform_num_optim(
+                    self.X[:, self._attr_indexes_num])
 
             if data_num_discretized is not None:
                 data_cat = np.concatenate((data_cat, data_num_discretized),
@@ -827,7 +842,7 @@ class MFE:
     def fit(self,
             X: t.Sequence,
             y: t.Optional[t.Sequence] = None,
-            transform_num: bool = True,
+            transform_num: str = "equal-freq",
             transform_cat: str = "gray",
             rescale: t.Optional[str] = None,
             rescale_args: t.Optional[t.Dict[str, t.Any]] = None,
@@ -849,13 +864,27 @@ class MFE:
             Target attributes of the dataset, assuming that it is a supervised
             task.
 
-        transform_num : :obj:`bool`, optional
-            If True, numeric attributes are discretized using equal-frequency
-            histogram technique to use alongside categorical data when
+        transform_num : :obj:`str`, optional
+            Transform numerical data to use alongside categorical data when
             extracting categoric-only metafeatures. Note that numeric-only
             features still uses the original numeric values, not the
-            discretized ones. If False, then numeric attributes are ignored for
-            categorical-only meta-features.
+            transformed ones.
+
+            If `equal-freq`, numerical attributes are discretized using an
+            equal-frequency histogram, where each bin cut is given by a data
+            percentile. The number of bins used is floor(num_inst ^ (1/3)).
+
+            If `optim`, numerical attributes are discretized using the
+            following algorithm:
+
+            For each numerical attribute:
+                1. Sort the attribute values
+                2. Calculate the first-order differences D between neighbors
+                   of the sorted values.
+                3. Each bin width is W = median(D).
+                4. Discretize the attribute using `k` bins of `W` width.
+
+            If None, then numerical attributes are not transformed.
 
         transform_cat : :obj:`str`, optional
             Transform categorical data to use alongside numerical data while
@@ -1383,7 +1412,7 @@ class MFE:
         if include_references:
             aux = docstring.split("References\n        ----------\n")
             if len(aux) >= 2:
-                split = aux[1].split(f".. [")
+                split = aux[1].split(".. [")
                 if len(split) >= 2:
                     del split[0]
                     for spl in split:
