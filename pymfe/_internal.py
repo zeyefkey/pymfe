@@ -1545,12 +1545,23 @@ def transform_num_optim(data_numeric: np.ndarray) -> t.Optional[np.ndarray]:
     Returns:
         np.ndarray: discretized version of ``data_numeric``.
     """
-    incs = np.median(np.diff(np.sort(data_numerid, axis=0), axis=0), axis=0)
+    bin_widths = np.quantile(np.diff(np.sort(data_numeric, axis=0), axis=0),
+                             0.98,
+                             axis=0)
 
-    for ind_attr, attr in enumerate(data_numeric.T):
-        ...o
+    min_vals, max_vals = np.quantile(data_numeric, (0, 1), axis=0)
 
-    return ...
+    data_transf = []  # type: t.List[np.ndarray]
+
+    for inc_ind, inc in enumerate(bin_widths):
+        attr = data_numeric[:, inc_ind, np.newaxis]
+        min_, max_ = min_vals[inc_ind], max_vals[inc_ind]
+        bin_cuts = min_ + inc * np.arange(
+            1, 1 + int(np.ceil((max_ - min_) / inc)))
+        attr_dig = np.digitize(x=attr, bins=bin_cuts, right=True)
+        data_transf.append(attr_dig)
+
+    return np.hstack(data_transf)
 
 
 def rescale_data(data: np.ndarray,
