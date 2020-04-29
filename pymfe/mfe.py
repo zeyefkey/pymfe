@@ -749,7 +749,7 @@ class MFE:
                 data_num_discretized = _internal.transform_num_equalfreq(
                     self.X[:, self._attr_indexes_num], num_bins=num_bins)
 
-            elif:
+            else:
                 data_num_discretized = _internal.transform_num_optim(
                     self.X[:, self._attr_indexes_num])
 
